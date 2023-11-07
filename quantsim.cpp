@@ -113,6 +113,7 @@ int Grovers(int n, vector<int> f){
     return q.M();
 }
 
+//Brute force period finding algorithm
 int period(int a, int N){
     int res = 1;
     int p = a;
@@ -124,6 +125,10 @@ int period(int a, int N){
     return res;
 }
 
+/// @brief find periods using shors algorithm
+/// @param a base
+/// @param N mod
+/// @return period of function
 int periodQuantum(int a, int N){
     int n = 0;
     int p = 1;
@@ -137,6 +142,8 @@ int gcd(int a, int b){
     if(a == 0 || b == 0) return a+b;
     return gcd(b, a%b);
 }
+//Shors algorithm
+//Returns non-trivial factor of N, or -1 if none found after 100 trials
 int Shors(int N){
     cout << "Factorizing " << N << endl;
     for(int tr = 1; tr < 100; tr++){
