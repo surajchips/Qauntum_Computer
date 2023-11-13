@@ -118,11 +118,34 @@ int period(int a, int N){
     int res = 1;
     int p = a;
     while(p != 1){
-        //if(res%1000 == 0) cout << res << endl;
         p = (int)((ll)p*a%N);
         res++;
     }
     return res;
+}
+
+/// @brief apply modExp gate to quantum state
+///        cheat function as it explicitly manipulates probabilities in state
+/// @param qs 
+/// @param a 
+/// @param N 
+void modExpMeasure(QuantumState &qs, int a, int N, int n){
+    int p = 1;
+    vector<vector<int> > state(N);
+    vector<int> v;
+    for(int i = 0; i < (1<<(2*n)); i++){
+        state[p].push_back(i);
+        v.push_back(p);
+        p = (p*a)%N;
+    }
+    sort(v.begin(), v.end());
+    v.resize(unique(v.begin(), v.end())-v.begin());
+    int m = v[rand()%v.size()];
+    fill_n(qs.probs.begin(), qs.probs.size(), 0.0);
+    for(int i : state[m]){
+        qs.probs[i] = 1.0;
+    }
+    qs.normalize();
 }
 
 /// @brief find periods using shors algorithm
@@ -131,12 +154,51 @@ int period(int a, int N){
 /// @return period of function
 int periodQuantum(int a, int N){
     int n = 0;
-    int p = 1;
-    while(p <= N){
-        p *= 2;
+    int pw = 1;
+    while(pw <= N){
+        pw *= 2;
         n++;
     }
-    QuantumState q(3*n);
+    QuantumState qs(2*n);
+    modExpMeasure(qs, a, N, n);
+    qs.QFT();
+
+    //cheat: if 0 is found, just try again
+    int res = qs.M();
+    while(res == 0) res = qs.M();
+
+    //continued fractions
+    vector<int> v;
+    int p = res;
+    int q = 1<<(2*n);
+    while(p != 0){
+        v.push_back((int)((ld)q/p+0.5));
+        swap(p, q);
+        p -= v.back()*q;
+        p = abs(p);
+    }
+    int dem = 0;
+    for(int e = 0; e < v.size(); e++){
+        p = 1;
+        q = v[e];
+        for(int i = e-1; i >= 0; i--){
+            p += q*v[i];
+            swap(p, q);
+        }
+        if(q >= N){
+            break;
+        }
+        dem = q;
+    }
+
+    //test all multiples of r0
+    pw = 1;
+    for(int i = 0; i < dem; i++) pw = (pw*a)%N;
+    int p2 = 1;
+    for(int res = dem; res < N; res += dem){
+        p2 = (p2*pw)%N;
+        if(p2 == 1) return res;
+    }
 }
 int gcd(int a, int b){
     if(a == 0 || b == 0) return a+b;
@@ -156,7 +218,7 @@ int Shors(int N){
             printf("%d is a factor of %d\n", g, N);
             return g;
         }
-        int r = period(a, N);
+        int r = periodQuantum(a, N);
         printf("Period of a is %d mod N\n", r);
         if(r%2 == 1) {
             cout << "Period of a is odd, next pick\n";
@@ -193,12 +255,26 @@ int main(){
     q.H(1);
     q.printState();*/
 
-    /*
+    
     vector<int> f(16, 0);
     f[9] = 1;
-    cout << Grovers(4, f) << endl;*/
+    cout << Grovers(4, f) << endl;
 
-    cout << Shors(176399) << endl;
+    cout << Shors(63) << endl;
+
+    /*
+    QuantumState q(2);
+    q.probs[0] = sqrt((ld)1/3);
+    q.probs[1] = sqrt((ld)1/3);
+    q.probs[3] = sqrt((ld)1/3);
+    q.printState();
+    vector<int> v(1, 1);
+    auto p = q.M(v);
+    QuantumState q2 = p.first;
+    cout << p.second << endl;
+    q2.printState();*/
+
+    //cout << periodQuantum(8, 21) << endl;;
     
     return 0;
 }

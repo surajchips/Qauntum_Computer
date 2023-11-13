@@ -115,7 +115,8 @@ struct QuantumState{
         ld a = abs(probs[0]);
         comp c = conj(probs[0])/a;
         if(a < 1e-12) c = comp(1.0, 0.0);
-
+        c /= mag;
+        
         for(int i = 0; i < (1 << n); i++){
             probs[i] *= c;
         }
@@ -130,6 +131,67 @@ struct QuantumState{
         }
         if(i == probs.size()) return i-1;
         return i;
+    }
+
+    pair<QuantumState, int> M(vector<int> cnt){
+        sort(cnt.begin(), cnt.end());
+        reverse(cnt.begin(), cnt.end());
+        int mbits = cnt.size();
+        int qbits = n-cnt.size();
+        vector<ld> mprobs(1<<mbits);
+        for(int i = 0; i < (1<<n); i++){
+            int mnum = 0;
+            for(int c : cnt){
+                mnum*=2;
+                if((i>>c)&1){
+                    mnum++;
+                }
+            }
+            mprobs[mnum] += norm(probs[i]);
+        }
+        ld p = distribution(generator);
+        int res = 0;
+        while(res < mprobs.size() && p > mprobs[res]) {
+            res++;
+            p -= mprobs[res];
+        }
+        if(res == mprobs.size()) res--;
+
+        QuantumState qs(qbits);
+        qs.probs[0] = 0.0;
+
+        int msk = 0;
+        int mskr = 0;
+        for(int i = 0; i < cnt.size(); i++){
+            msk += (1<<cnt[i]);
+            if((res>>i)&1) mskr += (1<<cnt[i]);
+        }
+        for(int i = 0; i < (1<<n); i++){
+            if(((i^mskr)&msk) != 0) continue;
+            int nmsk = i;
+            for(int c : cnt){
+                nmsk = ((nmsk>>(c+1))<<c)+(nmsk&((1<<c) - 1));
+            }
+            qs.probs[nmsk] = probs[i];
+        }
+        qs.normalize();
+        return make_pair(qs, res);
+    }
+
+    //TO-DO: replace with gate call version
+    const ld PI = 3.141592653589793268462643383279502884197169399375105820974944;
+    void QFT(){
+        vector<comp> probs2(1<<n);
+        for(int x = 0; x < (1<<n); x++){
+            for(int y = 0; y < (1<<n); y++){
+                ld theta = 2*PI*x*y;
+                theta /= (1<<n);
+                probs2[y] += probs[x]*polar((ld)1.0, theta);
+            }
+        }
+        for(int i = 0; i < (1<<n); i++) probs[i] = probs2[i];
+
+        normalize();
     }
 
     void printDistribution(){
