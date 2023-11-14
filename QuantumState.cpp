@@ -10,12 +10,14 @@
 #include <cmath>
 #include <limits>
 #include <random>
+#pragma once
 
 using namespace std;
 
 typedef long double ld;
 typedef long long ll;
 typedef complex<ld> comp;
+const ld PI = 3.141592653589793268462643383279502884197169399375105820974944;
 
 struct QuantumState{
     int n;
@@ -52,6 +54,17 @@ struct QuantumState{
             if(!pass) continue;
             if((i>>q)&1) continue;
             int alt = i+(1<<q);
+            swap(probs[i], probs[alt]);
+        }
+    }
+
+    void SWAP(int q1, int q2){
+        assert(q1<n);
+        assert(q2<n);
+        for(int i = 0; i < (1 << n); i++){
+            if((i>>q1)&1) continue;
+            if(((i>>q2)&1) == 0) continue;
+            int alt = i+(1<<q1)-(1<<q2);
             swap(probs[i], probs[alt]);
         }
     }
@@ -101,6 +114,34 @@ struct QuantumState{
             if(!pass) continue;
             if((i>>q)&1){
                 probs[i] = probs[i]*(ld)(-1.0);
+            }
+        }
+        normalize();
+    }
+
+    void Rk(int q, int k){
+        assert(q < n);
+        comp c = polar((ld)1.0, (ld)2*PI/(1<<k));
+        for(int i = 0; i < (1<<n); i++){
+            if((i>>q)&1){
+                probs[i] *= c;
+            }
+        }
+    }
+
+    void CRk(vector<int> cnt, int q, int k){
+        assert(q<n);
+        comp c = polar((ld)1.0, (ld)2*PI/(1<<k));
+        for(int i = 0; i < (1 << n); i++){
+            bool pass = true;
+            for(int qq : cnt){
+                assert(qq<n);
+                assert(qq!=q);
+                pass &= (i>>qq)&1;
+            }
+            if(!pass) continue;
+            if((i>>q)&1){
+                probs[i] *= c;
             }
         }
         normalize();
@@ -179,8 +220,7 @@ struct QuantumState{
     }
 
     //TO-DO: replace with gate call version
-    const ld PI = 3.141592653589793268462643383279502884197169399375105820974944;
-    void QFT(){
+    void QFTraw(){
         vector<comp> probs2(1<<n);
         for(int x = 0; x < (1<<n); x++){
             for(int y = 0; y < (1<<n); y++){
@@ -192,6 +232,25 @@ struct QuantumState{
         for(int i = 0; i < (1<<n); i++) probs[i] = probs2[i];
 
         normalize();
+    }
+
+    //QFT implemented with quantum gates
+    void QFT(){
+        for(int i = 0; n-i-1 > i; i++){
+            SWAP(i, n-i-1);
+        }
+        H(0);
+        vector<int> v(1);
+        for(int i = 1; i < n; i++){
+            v[0] = i;
+            CRk(v, 0, i+1);
+        }
+        for(int i = 1; i+1 < n; i++){
+            H(i);
+            v[0] = i+1;
+            CRk(v, i, 2);
+        }
+        H(n-1);
     }
 
     void printDistribution(){
