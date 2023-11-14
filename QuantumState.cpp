@@ -33,6 +33,9 @@ struct QuantumState{
 
     void I(){ return; }
 
+    /// @brief X-gate to single qubit
+    /// @param q 
+    /// Complexity: O(2^n)
     void X(int q){
         assert(q<n);
         for(int i = 0; i < (1 << n); i++){
@@ -41,7 +44,9 @@ struct QuantumState{
             swap(probs[i], probs[alt]);
         }
     }
-
+    /// @brief Control X-gate to single qubit
+    /// @param cnt - control qubits 
+    /// Complexity: O(C * 2^n) - C=number of control qubits
     void CX(vector<int> cnt, int q){
         assert(q<n);
         for(int i = 0; i < (1 << n); i++){
@@ -58,6 +63,9 @@ struct QuantumState{
         }
     }
 
+    /// @brief SWAP gate for 2 qubits
+    /// @param q1, q2
+    /// Complexity: O(2^n)
     void SWAP(int q1, int q2){
         assert(q1<n);
         assert(q2<n);
@@ -69,6 +77,9 @@ struct QuantumState{
         }
     }
 
+    /// @brief Hadamard-gate to single qubit
+    /// @param q 
+    /// Complexity: O(2^n)
     void H(int q){
         assert(q<n);
         ld s2 = sqrt(2);
@@ -147,6 +158,8 @@ struct QuantumState{
         normalize();
     }
 
+    /// @brief normalizes quantum state
+    /// Complexity: O(2^n)
     void normalize(){
         ld mag = 0.0;
         for(int i = 0; i < (1 << n); i++){
@@ -163,6 +176,8 @@ struct QuantumState{
         }
     }
 
+    /// @brief Gives measurement from quantum state
+    /// Complexity: O(2^n)
     int M(){
         ld p = distribution(generator);
         int i = 0;
@@ -174,6 +189,11 @@ struct QuantumState{
         return i;
     }
 
+    /// @brief Measures certain qubits
+    /// @return Resulting quantum state, along with measurement
+    /// @param cnt - qubits to measure
+    /// Complexity: O(C*2^n)
+    /// TO-DO - replace with single measurement operations, should be similarly efficiency
     pair<QuantumState, int> M(vector<int> cnt){
         sort(cnt.begin(), cnt.end());
         reverse(cnt.begin(), cnt.end());
@@ -234,7 +254,8 @@ struct QuantumState{
         normalize();
     }
 
-    //QFT implemented with quantum gates
+    /// @brief QFT implemented with quantum gates
+    /// Complexity: O(n * 2^n)
     void QFT(){
         for(int i = 0; n-i-1 > i; i++){
             SWAP(i, n-i-1);
@@ -253,11 +274,14 @@ struct QuantumState{
         H(n-1);
     }
 
+    /// @brief print probability distribution of all measurements
     void printDistribution(){
         for(int i = 0; i < (1<<n); i++){
             printf("%d: %.6f\n", i, (double)norm(probs[i]));
         }
     }
+    
+    /// @brief print exact state of quantum state
     void printState(){
         for(int i = 0; i < (1<<n); i++){
             cout << i << ": " << probs[i] << endl;
