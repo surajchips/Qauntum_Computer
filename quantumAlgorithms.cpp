@@ -67,7 +67,6 @@ bool DJ(int n, vector<int> &f){
 
 //Grovers algorithm
 //returns x such that f(x)=1
-const ld PI = 3.141592653589793268462643383279502884197169399375105820974944;
 int Grovers(int n, vector<int> f){
     QuantumState q(n);
 
@@ -199,6 +198,8 @@ int periodQuantum(int a, int N){
         p2 = (p2*pw)%N;
         if(p2 == 1) return res;
     }
+    exit(1);
+    return -1;
 }
 int gcd(int a, int b){
     if(a == 0 || b == 0) return a+b;

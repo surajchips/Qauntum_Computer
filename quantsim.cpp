@@ -11,6 +11,7 @@
 #include <limits>
 #include <random>
 #include "QuantumState.cpp"
+#include "quantumAlgorithms.cpp"
 
 using namespace std;
 
@@ -44,11 +45,17 @@ int main(){
     q.probs[1] = sqrt((ld)1/3);
     q.probs[3] = sqrt((ld)1/3);
     q.printState();
-    vector<int> v(1, 1);
-    auto p = q.M(v);
-    QuantumState q2 = p.first;
-    cout << p.second << endl;
-    q2.printState();*/
+    q.QFT();
+    q.printState();
+
+    QuantumState q2(2);
+    q2.probs[0] = sqrt((ld)1/3);
+    q2.probs[1] = sqrt((ld)1/3);
+    q2.probs[3] = sqrt((ld)1/3);
+    q2.QFTraw();
+    q2.printState();
+    */
+    
 
     //cout << periodQuantum(8, 21) << endl;;
     
