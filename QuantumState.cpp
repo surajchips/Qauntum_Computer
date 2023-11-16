@@ -28,7 +28,13 @@ struct QuantumState{
     QuantumState(int n): n(n){
         probs = vector<comp>(1<<n, comp(0.0, 0.0));
         probs[0] = comp(1.0, 0.0);
+        generator = default_random_engine(rand());
         distribution = uniform_real_distribution<ld>(0.0, 1.0);
+    }
+
+    void addQubit(){
+        n++;
+        probs.resize(1<<n);
     }
 
     void I(){ return; }
@@ -158,6 +164,46 @@ struct QuantumState{
         normalize();
     }
 
+    void CModMult(vector<int> cnt, int n2, int a, int N){
+        assert(n2<=n);
+        vector<comp> probs2(1<<n, 0.0);
+        for(int i = 0; i < (1 << n); i++){
+            bool pass = true;
+            for(int qq : cnt){
+                assert(qq<(n-n2));
+                pass &= (i>>qq)&1;
+            }
+            if(pass){
+                int y = (i>>(n-n2));
+                y = (y*a)%N;
+                int msk = (y<<(n-n2)) + (i&((1<<(n-n2))-1));
+                probs2[msk] += probs[i];
+            }
+            else{
+                probs2[i] += probs[i];
+            }
+        }
+        for(int i = 0; i < (1<<n); i++) probs[i] = probs2[i];
+
+        normalize();
+    }
+
+    /// @brief apply ModExp gate to quantum state
+    ///        |x>|y> ==> |x>|(y*a^x) mod N>
+    /// @param a base of exponentiation
+    /// @param N mod
+    /// @param n1 # of qubits in first register
+    void ModExp(int a, int N, int n1){
+        int n2 = n-n1;
+        int p2k = a;
+        vector<int> v(1);
+        for(int i = 0; i < n1; i++){
+            v[0] = i;
+            CModMult(v, n2, p2k, N);
+            p2k = (p2k*p2k)%N;
+        }
+    }
+
     /// @brief normalizes quantum state
     /// Complexity: O(2^n)
     void normalize(){
@@ -189,54 +235,49 @@ struct QuantumState{
         return i;
     }
 
+    pair<QuantumState, int> M(int q){
+        ld prob = 0.0;
+        for(int i = 0; i < (1<<n); i++){
+            if((i>>q)&1){
+                prob += norm(probs[i]);
+            }
+        }
+        ld p = distribution(generator);
+        int res = (p < prob);
+        if(n == 1){
+            return make_pair(NULL, res);
+        }
+        QuantumState qs(n-1);
+        qs.probs[0] = 0.0;
+        for(int i = 0; i < (1<<n); i++){
+            if(((i>>q)&1) != res) continue;
+            int nmsk = (i>>(q+1))<<q;
+            nmsk += (i&((1<<q)-1));
+            qs.probs[nmsk] += probs[i];
+        }
+        qs.normalize();
+        return make_pair(qs, res);
+    }
+
     /// @brief Measures certain qubits
     /// @return Resulting quantum state, along with measurement
     /// @param cnt - qubits to measure
     /// Complexity: O(C*2^n)
     /// TO-DO - replace with single measurement operations, should be similarly efficiency
     pair<QuantumState, int> M(vector<int> cnt){
+        if(cnt.size() == 1){
+            return M(cnt[0]);
+        }
         sort(cnt.begin(), cnt.end());
-        reverse(cnt.begin(), cnt.end());
-        int mbits = cnt.size();
-        int qbits = n-cnt.size();
-        vector<ld> mprobs(1<<mbits);
-        for(int i = 0; i < (1<<n); i++){
-            int mnum = 0;
-            for(int c : cnt){
-                mnum*=2;
-                if((i>>c)&1){
-                    mnum++;
-                }
-            }
-            mprobs[mnum] += norm(probs[i]);
-        }
-        ld p = distribution(generator);
         int res = 0;
-        while(res < mprobs.size() && p > mprobs[res]) {
-            res++;
-            p -= mprobs[res];
-        }
-        if(res == mprobs.size()) res--;
+        
+        auto p = M(cnt.back());
+        cnt.pop_back();
+        auto p2 = p.first.M(cnt);
+        res = p.second*(1<<(cnt.size())) + p2.second;
 
-        QuantumState qs(qbits);
-        qs.probs[0] = 0.0;
+        return make_pair(p2.first, res);
 
-        int msk = 0;
-        int mskr = 0;
-        for(int i = 0; i < cnt.size(); i++){
-            msk += (1<<cnt[i]);
-            if((res>>i)&1) mskr += (1<<cnt[i]);
-        }
-        for(int i = 0; i < (1<<n); i++){
-            if(((i^mskr)&msk) != 0) continue;
-            int nmsk = i;
-            for(int c : cnt){
-                nmsk = ((nmsk>>(c+1))<<c)+(nmsk&((1<<c) - 1));
-            }
-            qs.probs[nmsk] = probs[i];
-        }
-        qs.normalize();
-        return make_pair(qs, res);
     }
 
     //TO-DO: replace with gate call version
@@ -274,13 +315,47 @@ struct QuantumState{
         H(n-1);
     }
 
+    void Decrement(){
+        X(0);
+        vector<int> v;
+        for(int i = 1; i < n; i++){
+            v.push_back(i-1);
+            CX(v, i);
+        }
+    }
+    void Increment(){
+        vector<int> v(n);
+        iota(v.begin(), v.end(), 0);
+        while(!v.empty()){
+            int i = v.back();
+            v.pop_back();
+            CX(v, i);
+        }
+    }
+    void Increment(int q){
+        vector<int> v(n-q);
+        iota(v.begin(), v.end(), q);
+        while(!v.empty()){
+            int i = v.back();
+            v.pop_back();
+            CX(v, i);
+        }
+    }
+    void Add(int x){
+        for(int q = 0; q < n; q++){
+            if((x>>q)&1){
+                Increment(q);
+            }
+        }
+    }
+
     /// @brief print probability distribution of all measurements
     void printDistribution(){
         for(int i = 0; i < (1<<n); i++){
             printf("%d: %.6f\n", i, (double)norm(probs[i]));
         }
     }
-    
+
     /// @brief print exact state of quantum state
     void printState(){
         for(int i = 0; i < (1<<n); i++){

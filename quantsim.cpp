@@ -37,7 +37,7 @@ int main(){
     f[9] = 1;
     cout << Grovers(4, f) << endl;
 
-    cout << Shors(63) << endl;
+    cout << Shors(51) << endl;
 
     /*
     QuantumState q(2);
@@ -55,6 +55,12 @@ int main(){
     q2.QFTraw();
     q2.printState();
     */
+
+    QuantumState q(2);
+    for(int i = 0; i < 5; i++){
+        q.printState();
+        q.Add(3);
+    }
     
 
     //cout << periodQuantum(8, 21) << endl;;

@@ -123,30 +123,6 @@ int period(int a, int N){
     return res;
 }
 
-/// @brief apply modExp gate to quantum state
-///        cheat function as it explicitly manipulates probabilities in state
-/// @param qs 
-/// @param a 
-/// @param N 
-void modExpMeasure(QuantumState &qs, int a, int N, int n){
-    int p = 1;
-    vector<vector<int> > state(N);
-    vector<int> v;
-    for(int i = 0; i < (1<<(2*n)); i++){
-        state[p].push_back(i);
-        v.push_back(p);
-        p = (p*a)%N;
-    }
-    sort(v.begin(), v.end());
-    v.resize(unique(v.begin(), v.end())-v.begin());
-    int m = v[rand()%v.size()];
-    fill_n(qs.probs.begin(), qs.probs.size(), 0.0);
-    for(int i : state[m]){
-        qs.probs[i] = 1.0;
-    }
-    qs.normalize();
-}
-
 /// @brief find periods using shors algorithm
 /// @param a base
 /// @param N mod
@@ -158,8 +134,16 @@ int periodQuantum(int a, int N){
         pw *= 2;
         n++;
     }
-    QuantumState qs(2*n);
-    modExpMeasure(qs, a, N, n);
+    int reg1 = 2*n;
+    QuantumState qs(reg1+n);
+    for(int i = 0; i < reg1; i++){
+        qs.H(i);
+    }
+    qs.X(reg1);
+    qs.ModExp(a, N, reg1);
+    vector<int> v;
+    for(int i = 0; i < n; i++) v.push_back(reg1+i);
+    qs = qs.M(v).first;
     qs.QFT();
 
     //cheat: if 0 is found, just try again
@@ -167,7 +151,7 @@ int periodQuantum(int a, int N){
     while(res == 0) res = qs.M();
 
     //continued fractions
-    vector<int> v;
+    v.clear();
     int p = res;
     int q = 1<<(2*n);
     while(p != 0){
